@@ -44,6 +44,19 @@ class User {
         this.user.InsertOrUpdate();
     }
 
+    refreshStats() {
+        if (!this.user.IsLoaded) {
+            console.log(this.user.username + " not loaded! Not refreshing stats")
+            return;
+        }
+
+        let elapsedTime = Date.now() - this.user.JoinedTime;
+        this.user.VoiceTimeMS += elapsedTime;
+        this.user.JoinedTime = Date.now();
+        
+        this.user.InsertOrUpdate();
+    }
+
     resetJoinedTime() {
         if (!this.user.IsLoaded) {
             return;

@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
 const db = require('better-sqlite3')('./data/myData.db');
+const nodeCleanup = require("node-cleanup");
 const {User, UserList} = require("./user.js");
+const utils = require("./utils.js");
 require("dotenv").config();
 
 const DiscordEvents = Discord.Constants.Events;
@@ -46,7 +48,7 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
     // Create the commands
     let commands
     
-    let testGuild // = client.guilds.cache.get("846186286918270996");
+    let testGuild = client.guilds.cache.get("846186286918270996");
     if (testGuild) {
         commands = testGuild.commands;
     } else {
@@ -74,6 +76,8 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
     const { commandName, options } = interaction;
     switch (commandName) {
         case "ccme":
+            utils.refreshCCStats();
+
             let user = new User(db, interaction.user);
 
             interaction.reply({
@@ -82,6 +86,8 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
 
             break;
         case "cctop":
+            utils.refreshCCStats();
+
             let users = new UserList(db);
             users.loadByTop5();
 
@@ -112,4 +118,9 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         console.log(discordUser.username + " left a call");
         user.leaveVoice();
     }
+});
+
+nodeCleanup((exitCode, signal) => {
+    console.log("Refreshing stats before stopping");
+    utils.refreshCCStats();
 });
