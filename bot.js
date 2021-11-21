@@ -53,7 +53,7 @@ client.on(DiscordEvents.MESSAGE_CREATE, async (message) => {
         case "$ccme":
             let user = new User(db, message.author);
 
-            channel.send(`${user.user.Username}: ${user.getVoiceTimeStr()}\n`)
+            channel.send(user.getVoiceTimeStr());
 
             break;
         case "$cctop":
