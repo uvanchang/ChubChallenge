@@ -1,0 +1,1 @@
+Uses pm2 to keep bot on constantly.
