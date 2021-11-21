@@ -18,7 +18,6 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
     users.loadByNonZeroJoinedTime();
 
     users.list.forEach(user => {
-        console.log("reseting joined time")
         user.resetJoinedTime();
     });
 
@@ -38,8 +37,8 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
             channel.members.forEach(member => {
                 console.log(member.user.username + " in a call")
 
-                let user = new User(db, member.user.id);
-                user.joinVoice(member.user);
+                let user = new User(db, member.user);
+                user.joinVoice();
             });
         });
     });
@@ -52,7 +51,7 @@ client.on(DiscordEvents.MESSAGE_CREATE, async (message) => {
     const channel = message.channel;
     switch (message.content) {
         case "$ccme":
-            let user = new User(db, message.author.id);
+            let user = new User(db, message.author);
 
             channel.send(`${user.user.Username}: ${user.getVoiceTimeStr()}\n`)
 
@@ -76,15 +75,15 @@ client.on(DiscordEvents.MESSAGE_CREATE, async (message) => {
 
 client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState) => {
     let discordUser = (await oldVoiceState.guild.members.fetch(oldVoiceState.id)).user;
-    let user = new User(db, discordUser.id);
+    let user = new User(db, discordUser);
 
     if (!oldVoiceState.channelId) {
         // Joined the call
         console.log(discordUser.username + " joined a call");
-        user.joinVoice(discordUser);
+        user.joinVoice();
     } else if (!newVoiceState.channelId) {
         // Left the call
         console.log(discordUser.username + " left a call");
-        user.leaveVoice(discordUser);
+        user.leaveVoice();
     }
 });

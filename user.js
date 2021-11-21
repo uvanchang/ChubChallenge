@@ -1,9 +1,11 @@
 class User {
-    constructor(db, UserID) {
+    constructor(db, discordUser) {
         this.user = new InternalUser(db);
 
-        if (UserID) {
-            this.user.loadByUserID(UserID);
+        if (discordUser) {
+            this.user.loadByUserID(discordUser.id);
+            
+            this.user.Username = discordUser.username;
         }
     }
 
@@ -20,25 +22,23 @@ class User {
         return hours + ":" + minutes + ":" + seconds + "." + milliseconds;
     }
 
-    joinVoice(discordUser) {
-        this.user.Username = discordUser.username;
+    joinVoice() {
         this.user.JoinedTime = Date.now();
 
         this.user.InsertOrUpdate();
     }
 
-    leaveVoice(discordUser) {
+    leaveVoice() {
         if (!this.user.IsLoaded) {
-            console.log(discordUser.username + " not loaded! Not adding voice time");
+            console.log(this.user.username + " not loaded! Not adding voice time");
         } else if (this.user.JoinedTime == 0) {
-            console.log(discordUser.username + " JoinedTime = 0! Not adding voice time");
+            console.log(this.user.username + " JoinedTime = 0! Not adding voice time");
         } else {
             let elapsedTime = Date.now() - this.user.JoinedTime
             this.user.VoiceTimeMS += elapsedTime;
-            console.log("Adding " + elapsedTime + " ms to " + discordUser.username + " VoiceTimeMS for total of " + this.user.VoiceTimeMS + " ms");
+            console.log("Adding " + elapsedTime + " ms to " + this.user.username + " VoiceTimeMS for total of " + this.user.VoiceTimeMS + " ms");
         }
 
-        this.user.Username = discordUser.username;
         this.user.JoinedTime = 0;
 
         this.user.InsertOrUpdate();
