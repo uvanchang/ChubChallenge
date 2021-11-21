@@ -4,10 +4,10 @@ const {User, UserList} = require("./user.js");
 require("dotenv").config();
 
 const DiscordEvents = Discord.Constants.Events;
+const DiscordIntents = Discord.Intents.FLAGS;
 
 const client = new Discord.Client({
-    partials: ['USER', 'MESSAGE', 'REACTION'],
-    intents: ['GUILDS', 'GUILD_VOICE_STATES', 'GUILD_MESSAGES'],
+    intents: [DiscordIntents.GUILDS, DiscordIntents.GUILD_VOICE_STATES, DiscordIntents.GUILD_MESSAGES],
 });
 
 client.login(process.env.BOT_TOKEN);
@@ -43,30 +43,56 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
         });
     });
 
+    // Create the commands
+    let commands
+    
+    let testGuild // = client.guilds.cache.get("846186286918270996");
+    if (testGuild) {
+        commands = testGuild.commands;
+    } else {
+        commands = client.application.commands;
+    }
+
+    commands.create({
+        name: "ccme",
+        description: "See your CC stats.",
+    });
+
+    commands.create({
+        name: "cctop",
+        description: "See top 5 CC stats."
+    });
+
     console.log("bot is ready!");
 });
 
-// Message callback
-client.on(DiscordEvents.MESSAGE_CREATE, async (message) => {
-    const channel = message.channel;
-    switch (message.content) {
-        case "$ccme":
-            let user = new User(db, message.author);
+client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
+    if (!interaction.isCommand()) {
+        return;
+    }
 
-            channel.send(user.getVoiceTimeStr());
+    const { commandName, options } = interaction;
+    switch (commandName) {
+        case "ccme":
+            let user = new User(db, interaction.user);
+
+            interaction.reply({
+                content: user.getVoiceTimeStr(),
+            });
 
             break;
-        case "$cctop":
+        case "cctop":
             let users = new UserList(db);
             users.loadByTop5();
 
             let replyStr = "Top Voice Channel Losers\n";
             users.list.forEach((user, i) => {
-                replyStr += `${i + 1}. ${user.user.Username}: ${user.getVoiceTimeStr()}\n`
+                replyStr += `${i + 1}. ${user.getVoiceTimeStr()}\n`
             });
 
-            channel.send(replyStr);
-
+            interaction.reply({
+                content: replyStr,
+            });
             break;
         default:
             break;
