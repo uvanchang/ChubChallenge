@@ -11,6 +11,14 @@ class User {
         }
     }
 
+    getUsername() {
+        return this.user.Username;
+    }
+
+    getUserID() {
+        return this.user.UserID;
+    }
+
     joinVoice() {
         this.user.JoinedTime = Date.now();
 

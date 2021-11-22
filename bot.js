@@ -99,14 +99,14 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
 
             let replyStr = "Top Total Voice Channel Time\n";
             users.list.forEach((user, i) => {
-                replyStr += `${i + 1}. ${user.user.Username}: ${user.getVoiceTimeStr()}\n`
+                replyStr += `${i + 1}. ${user.getUsername()}: ${user.getVoiceTimeStr()}\n`
             });
             
             users.loadByTop5AloneTimeMS();
 
             replyStr += "\nTop Voice Channel Losers\n";
             users.list.forEach((user, i) => {
-                replyStr += `${i + 1}. ${user.user.Username}: ${user.getAloneTimeStr()}\n`
+                replyStr += `${i + 1}. ${user.getUsername()}: ${user.getAloneTimeStr()}\n`
             });
 
             interaction.reply({
@@ -119,39 +119,38 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
 });
 
 client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState) => {
-    let discordUser = (await oldVoiceState.guild.members.fetch(oldVoiceState.id)).user;
-    let user = new User(db, discordUser);
+    let guild = oldVoiceState.guild,
+        discordUser = (await guild.members.fetch(oldVoiceState.id)).user,
+        user = new User(db, discordUser),
+        oldChannel, newChannel;
+    
+    if (oldVoiceState.channelId) {
+        oldChannel = await guild.channels.fetch(oldVoiceState.channelId)
+    }
+
+    if (newVoiceState.channelId) {
+        newChannel = await guild.channels.fetch(newVoiceState.channelId);
+    }
 
     if (!oldVoiceState.channelId) {
         // Joined the call
         console.log(discordUser.username + " joined a call");
         user.joinVoice();
 
-        let channel = await newVoiceState.guild.channels.fetch(newVoiceState.channelId);
-        if (channel.members.size == 1) {
-            // Start tracking alone time
-            console.log("Tracking " + discordUser.username + " alone time")
-            user.joinVoiceAlone();
-        } else if (channel.members.size == 2) {
-            // Stop tracking alone time for other user
-            let otherMember = channel.members.find(member => {
-                return member.user.id !== discordUser.id;
-            });
-            if (!otherMember) {
-                return;
-            }
-
-            let otherDiscordUser = otherMember.user;
-            console.log("Stopping " + otherDiscordUser.username + " alone time");
-
-            let otherUser = new User(db, otherDiscordUser);
-            otherUser.leaveVoiceAlone();
-        }
+        handleJoinAlone(oldChannel, newChannel, user);
     } else if (!newVoiceState.channelId) {
         // Left the call
         console.log(discordUser.username + " left a call");
         user.leaveVoice();
         user.leaveVoiceAlone();
+
+        handleLeaveAlone(oldChannel);
+    } else {
+        // Went from one call to another
+        console.log(discordUser.username + " went joined another call");
+        
+        handleJoinAlone(oldChannel, newChannel, user);
+        handleLeaveAlone(oldChannel);
     }
 });
 
@@ -167,4 +166,43 @@ function refreshCCStats() {
     users.list.forEach(user => {
         user.refreshStats();
     });
+}
+
+function handleJoinAlone(oldChannel, newChannel, user) {
+    if ((!oldChannel || oldChannel.members.size != 0) && newChannel.members.size == 1) {
+        // Start tracking alone time if going between channels and new channel is 1
+        console.log("Tracking " + user.getUsername() + " alone time");
+        user.joinVoiceAlone();
+    } else if (newChannel.members.size == 2) {
+        // Stop tracking alone time for user
+        console.log("Stopping " + user.getUsername() + " alone time");
+        user.leaveVoiceAlone();
+
+        // Stop tracking alone time for other user
+        let otherMember = newChannel.members.find(member => {
+            return member.user.id !== user.getUserID();
+        });
+        if (!otherMember) {
+            return;
+        }
+
+        let otherDiscordUser = otherMember.user;
+        console.log("Stopping " + otherDiscordUser.username + " alone time");
+
+        let otherUser = new User(db, otherDiscordUser);
+        otherUser.leaveVoiceAlone();
+    }
+}
+
+function handleLeaveAlone(oldChannel) {
+    if (oldChannel.members.size == 1) {
+        // Start tracking alone time for other user
+        let otherMember = oldChannel.members.first();
+
+        let otherDiscordUser = otherMember.user;
+        console.log("Tracking " + otherDiscordUser.username + " alone time");
+
+        let otherUser = new User(db, otherDiscordUser);
+        otherUser.joinVoiceAlone();
+    }
 }
