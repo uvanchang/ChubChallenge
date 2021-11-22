@@ -1,3 +1,5 @@
+const utils = require("./utils.js");
+
 class User {
     constructor(db, discordUser) {
         this.user = new InternalUser(db);
@@ -7,19 +9,6 @@ class User {
             
             this.user.Username = discordUser.username;
         }
-    }
-
-    getVoiceTimeStr() {
-        let milliseconds = Math.floor((this.user.VoiceTimeMS % 1000) / 100),
-            seconds = Math.floor((this.user.VoiceTimeMS / 1000) % 60),
-            minutes = Math.floor((this.user.VoiceTimeMS / (1000 * 60)) % 60),
-            hours = Math.floor((this.user.VoiceTimeMS / (1000 * 60 * 60)) % 24);
-        
-        hours = (hours < 10) ? "0" + hours : hours;
-        minutes = (minutes < 10) ? "0" + minutes : minutes;
-        seconds = (seconds < 10) ? "0" + seconds : seconds;
-        
-        return this.user.Username + ": " + hours + ":" + minutes + ":" + seconds + "." + milliseconds;
     }
 
     joinVoice() {
@@ -32,7 +21,8 @@ class User {
         if (!this.user.IsLoaded) {
             console.log(this.user.username + " not loaded! Not adding voice time");
         } else if (this.user.JoinedTime == 0) {
-            console.log(this.user.username + " JoinedTime = 0! Not adding voice time");
+            // No time to add
+            return;
         } else {
             let elapsedTime = Date.now() - this.user.JoinedTime
             this.user.VoiceTimeMS += elapsedTime;
@@ -44,27 +34,73 @@ class User {
         this.user.InsertOrUpdate();
     }
 
+    joinVoiceAlone() {
+        this.user.AloneJoinedTime = Date.now();
+
+        this.user.InsertOrUpdate();
+    }
+
+    leaveVoiceAlone() {
+        if (!this.user.IsLoaded) {
+            console.log(this.user.username + " not loaded! Not adding voice time");
+        } else if (this.user.AloneJoinedTime == 0) {
+            // No time to add
+            return;
+        } else {
+            let elapsedTime = Date.now() - this.user.AloneJoinedTime
+            this.user.AloneTimeMS += elapsedTime;
+            console.log("Adding " + elapsedTime + " ms to " + this.user.username + " AloneTimeMS for total of " + this.user.AloneTimeMS + " ms");
+        }
+
+        this.user.AloneJoinedTime = 0;
+
+        this.user.InsertOrUpdate();
+    }
+
     refreshStats() {
         if (!this.user.IsLoaded) {
             console.log(this.user.username + " not loaded! Not refreshing stats")
             return;
         }
 
-        let elapsedTime = Date.now() - this.user.JoinedTime;
-        this.user.VoiceTimeMS += elapsedTime;
-        this.user.JoinedTime = Date.now();
-        
-        this.user.InsertOrUpdate();
+        if (this.user.JoinedTime != 0) {
+            let elapsedTime = Date.now() - this.user.JoinedTime;
+            this.user.VoiceTimeMS += elapsedTime;
+            this.user.JoinedTime = Date.now();
+            
+            this.user.InsertOrUpdate();
+        }
+
+        if (this.user.AloneJoinedTime != 0) {
+            let elapsedTime = Date.now() - this.user.AloneJoinedTime;
+            this.user.AloneTimeMS += elapsedTime;
+            this.user.AloneJoinedTime = Date.now();
+            
+            this.user.InsertOrUpdate();
+        }
     }
 
-    resetJoinedTime() {
+    resetJoinedTimes() {
         if (!this.user.IsLoaded) {
             return;
         }
 
         this.user.JoinedTime = 0;
+        this.user.AloneJoinedTime = 0;
 
         this.user.InsertOrUpdate();
+    }
+    
+    getVoiceTimeStr() {
+        return utils.getFormatedTime(this.user.VoiceTimeMS);
+    }
+
+    getAloneTimeStr() {
+        return utils.getFormatedTime(this.user.AloneTimeMS);
+    }
+
+    toString() {
+        return `**${this.user.Username}**\nTotal Time: ${this.getVoiceTimeStr()}\nAlone Time: ${this.getAloneTimeStr()}`
     }
 }
 
@@ -75,12 +111,16 @@ class UserList {
         this.list = [];
     }
 
-    loadByNonZeroJoinedTime() {
-        this.loadByCriteria("WHERE JoinedTime != 0");
+    loadByNonZeroJoinedTimes() {
+        this.loadByCriteria("WHERE JoinedTime != 0 OR AloneTimeMS != 0");
     }
 
-    loadByTop5() {
+    loadByTop5VoiceTimeMS() {
         this.loadByCriteria("ORDER BY VoiceTimeMS DESC LIMIT 5");
+    }
+
+    loadByTop5AloneTimeMS() {
+        this.loadByCriteria("ORDER BY AloneTimeMS DESC LIMIT 5");
     }
 
     loadByCriteria(criteria) {
@@ -90,7 +130,9 @@ class UserList {
                 UserID,
                 Username,
                 VoiceTimeMS,
-                JoinedTime
+                JoinedTime,
+                AloneTimeMS,
+                AloneJoinedTime
             FROM
                 User
             ${criteria}
@@ -107,6 +149,8 @@ class UserList {
             internalUser.Username = row.Username;
             internalUser.VoiceTimeMS = row.VoiceTimeMS;
             internalUser.JoinedTime = row.JoinedTime;
+            internalUser.AloneTimeMS = row.AloneTimeMS;
+            internalUser.AloneJoinedTime = row.AloneJoinedTime;
             internalUser.IsLoaded = true;
 
             user.user = internalUser;
@@ -124,6 +168,8 @@ class InternalUser {
         this.Username = "";
         this.VoiceTimeMS = 0;
         this.JoinedTime = 0;
+        this.AloneTimeMS = 0;
+        this.AloneJoinedTime = 0;
 
         this.IsLoaded = false;
     }
@@ -135,7 +181,9 @@ class InternalUser {
                 UserID,
                 Username,
                 VoiceTimeMS,
-                JoinedTime
+                JoinedTime,
+                AloneTimeMS,
+                AloneJoinedTime
             FROM
                 User
             WHERE
@@ -149,6 +197,8 @@ class InternalUser {
         this.Username = row.Username;
         this.VoiceTimeMS = row.VoiceTimeMS;
         this.JoinedTime = row.JoinedTime;
+        this.AloneTimeMS = row.AloneTimeMS;
+        this.AloneJoinedTime = row.AloneJoinedTime;
 
         this.IsLoaded = true;
     }
@@ -161,26 +211,32 @@ class InternalUser {
                     UserID = ?, 
                     Username = ?, 
                     VoiceTimeMS = ?, 
-                    JoinedTime = ?
+                    JoinedTime = ?,
+                    AloneTimeMS = ?,
+                    AloneJoinedTime = ?
                 WHERE UserID = ?
             `).run(
                 this.UserID,
                 this.Username,
                 this.VoiceTimeMS,
                 this.JoinedTime,
+                this.AloneTimeMS,
+                this.AloneJoinedTime,
                 this.UserID
             );
         } else {
             // Insert
             this.db.prepare(`
-                INSERT INTO User (UserID, Username, VoiceTimeMS, JoinedTime)
+                INSERT INTO User (UserID, Username, VoiceTimeMS, JoinedTime, AloneTimeMS, AloneJoinedTime)
                 VALUES
-                    (?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?)
             `).run(
                 this.UserID,
                 this.Username,
                 this.VoiceTimeMS,
-                this.JoinedTime
+                this.JoinedTime,
+                this.AloneTimeMS,
+                this.AloneJoinedTime
             );
         }
     }

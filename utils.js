@@ -1,15 +1,16 @@
-const db = require('better-sqlite3')('./data/myData.db');
-const {User, UserList} = require("./user.js");
+function getFormatedTime(timeMS) {
+    let milliseconds = Math.floor((timeMS % 1000) / 100),
+        seconds = Math.floor((timeMS / 1000) % 60),
+        minutes = Math.floor((timeMS / (1000 * 60)) % 60),
+        hours = Math.floor((timeMS / (1000 * 60 * 60)) % 24);
+    
+    hours = (hours < 10) ? "0" + hours : hours;
+    minutes = (minutes < 10) ? "0" + minutes : minutes;
+    seconds = (seconds < 10) ? "0" + seconds : seconds;
 
-function refreshCCStats() {
-    let users = new UserList(db);
-    users.loadByNonZeroJoinedTime();
-
-    users.list.forEach(user => {
-        user.refreshStats();
-    });
+    return hours + ":" + minutes + ":" + seconds + "." + milliseconds;
 }
 
 module.exports = {
-    refreshCCStats,
+    getFormatedTime,
 };

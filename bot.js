@@ -17,10 +17,10 @@ client.login(process.env.BOT_TOKEN);
 client.once(DiscordEvents.CLIENT_READY, async () => {
     // Reset all JoinedTime to 0
     let users = new UserList(db);
-    users.loadByNonZeroJoinedTime();
+    users.loadByNonZeroJoinedTimes();
 
     users.list.forEach(user => {
-        user.resetJoinedTime();
+        user.resetJoinedTimes();
     });
 
     // Set all users currently in voice as joined
@@ -41,6 +41,12 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
 
                 let user = new User(db, member.user);
                 user.joinVoice();
+
+                if (channel.members.size == 1) {
+                    // Start tracking alone time
+                    console.log("Tracking " + member.user.username + " alone time")
+                    user.joinVoiceAlone();
+                }
             });
         });
     });
@@ -48,7 +54,7 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
     // Create the commands
     let commands
     
-    let testGuild = client.guilds.cache.get("846186286918270996");
+    let testGuild // = client.guilds.cache.get("846186286918270996");
     if (testGuild) {
         commands = testGuild.commands;
     } else {
@@ -76,24 +82,31 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
     const { commandName, options } = interaction;
     switch (commandName) {
         case "ccme":
-            utils.refreshCCStats();
+            refreshCCStats();
 
             let user = new User(db, interaction.user);
 
             interaction.reply({
-                content: user.getVoiceTimeStr(),
+                content: user.toString(),
             });
 
             break;
         case "cctop":
-            utils.refreshCCStats();
+            refreshCCStats();
 
             let users = new UserList(db);
-            users.loadByTop5();
+            users.loadByTop5VoiceTimeMS();
 
-            let replyStr = "Top Voice Channel Losers\n";
+            let replyStr = "Top Total Voice Channel Time\n";
             users.list.forEach((user, i) => {
-                replyStr += `${i + 1}. ${user.getVoiceTimeStr()}\n`
+                replyStr += `${i + 1}. ${user.user.Username}: ${user.getVoiceTimeStr()}\n`
+            });
+            
+            users.loadByTop5AloneTimeMS();
+
+            replyStr += "\nTop Voice Channel Losers\n";
+            users.list.forEach((user, i) => {
+                replyStr += `${i + 1}. ${user.user.Username}: ${user.getAloneTimeStr()}\n`
             });
 
             interaction.reply({
@@ -113,14 +126,45 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         // Joined the call
         console.log(discordUser.username + " joined a call");
         user.joinVoice();
+
+        let channel = await newVoiceState.guild.channels.fetch(newVoiceState.channelId);
+        if (channel.members.size == 1) {
+            // Start tracking alone time
+            console.log("Tracking " + discordUser.username + " alone time")
+            user.joinVoiceAlone();
+        } else if (channel.members.size == 2) {
+            // Stop tracking alone time for other user
+            let otherMember = channel.members.find(member => {
+                return member.user.id !== discordUser.id;
+            });
+            if (!otherMember) {
+                return;
+            }
+
+            let otherDiscordUser = otherMember.user;
+            console.log("Stopping " + otherDiscordUser.username + " alone time");
+
+            let otherUser = new User(db, otherDiscordUser);
+            otherUser.leaveVoiceAlone();
+        }
     } else if (!newVoiceState.channelId) {
         // Left the call
         console.log(discordUser.username + " left a call");
         user.leaveVoice();
+        user.leaveVoiceAlone();
     }
 });
 
 nodeCleanup((exitCode, signal) => {
     console.log("Refreshing stats before stopping");
-    utils.refreshCCStats();
+    refreshCCStats();
 });
+
+function refreshCCStats() {
+    let users = new UserList(db);
+    users.loadByNonZeroJoinedTimes();
+
+    users.list.forEach(user => {
+        user.refreshStats();
+    });
+}
