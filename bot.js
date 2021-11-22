@@ -174,9 +174,11 @@ function handleJoinAlone(oldChannel, newChannel, user) {
         console.log("Tracking " + user.getUsername() + " alone time");
         user.joinVoiceAlone();
     } else if (newChannel.members.size == 2) {
-        // Stop tracking alone time for user
-        console.log("Stopping " + user.getUsername() + " alone time");
-        user.leaveVoiceAlone();
+        if (oldChannel) {
+            // Stop tracking alone time for user
+            console.log("Stopping " + user.getUsername() + " alone time");
+            user.leaveVoiceAlone();
+        }
 
         // Stop tracking alone time for other user
         let otherMember = newChannel.members.find(member => {
