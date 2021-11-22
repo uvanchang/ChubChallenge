@@ -34,7 +34,7 @@ class User {
         } else {
             let elapsedTime = Date.now() - this.user.JoinedTime
             this.user.VoiceTimeMS += elapsedTime;
-            console.log("Adding " + elapsedTime + " ms to " + this.user.username + " VoiceTimeMS for total of " + this.user.VoiceTimeMS + " ms");
+            console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " VoiceTimeMS for total of " + this.user.VoiceTimeMS + " ms");
         }
 
         this.user.JoinedTime = 0;
@@ -57,7 +57,7 @@ class User {
         } else {
             let elapsedTime = Date.now() - this.user.AloneJoinedTime
             this.user.AloneTimeMS += elapsedTime;
-            console.log("Adding " + elapsedTime + " ms to " + this.user.username + " AloneTimeMS for total of " + this.user.AloneTimeMS + " ms");
+            console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " AloneTimeMS for total of " + this.user.AloneTimeMS + " ms");
         }
 
         this.user.AloneJoinedTime = 0;
