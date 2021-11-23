@@ -119,6 +119,11 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
 });
 
 client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState) => {
+    if (oldVoiceState.channelId == newVoiceState.channelId) {
+        // Only track moving channels updates
+        return;
+    }
+
     let guild = oldVoiceState.guild,
         discordUser = (await guild.members.fetch(oldVoiceState.id)).user,
         user = new User(db, discordUser),
