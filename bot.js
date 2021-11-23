@@ -137,13 +137,13 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         newChannel = await guild.channels.fetch(newVoiceState.channelId);
     }
 
-    if (!oldVoiceState.channelId) {
+    if (!oldChannel) {
         // Joined the call
         console.log(discordUser.username + " joined a call");
         user.joinVoice();
 
-        handleJoinAlone(newChannel, user);
-    } else if (!newVoiceState.channelId) {
+        handleJoinAlone(newChannel, user, guild.afkChannelId);
+    } else if (!newChannel) {
         // Left the call
         console.log(discordUser.username + " left a call");
         user.leaveVoice();
@@ -154,7 +154,7 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         // Went from one call to another
         console.log(discordUser.username + " joined another call");
         
-        handleJoinAlone(newChannel, user);
+        handleJoinAlone(newChannel, user, guild.afkChannelId);
         handleLeaveAlone(oldChannel);
     }
 });
@@ -173,9 +173,16 @@ function refreshCCStats() {
     });
 }
 
-function handleJoinAlone(newChannel, user) {
+function handleJoinAlone(newChannel, user, afkChannelId) {
     // Stop tracking alone time for user
     user.leaveVoiceAlone();
+    
+    if (newChannel.id == afkChannelId) {
+        // Went AFK
+        console.log(user.getUsername() + " went AFK");
+        user.leaveVoice();
+        return;
+    }
 
     if (newChannel.members.size == 1) {
         // Start tracking alone time if going between channels and new channel is 1
