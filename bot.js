@@ -2,6 +2,7 @@ const Discord = require("discord.js");
 const db = require('better-sqlite3')('./data/myData.db');
 const nodeCleanup = require("node-cleanup");
 const {User, UserList, refreshCCStats} = require("./user.js");
+const {DeafenStatus} = require("./constants.js")
 const interactions = require("./interactions.js");
 require("dotenv").config();
 
@@ -44,7 +45,6 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
 
                 if (channel.members.size == 1) {
                     // Start tracking alone time
-                    console.log("Tracking " + member.user.username + " alone time")
                     user.joinVoiceAlone();
                 }
             });
@@ -106,14 +106,20 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
 });
 
 client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState) => {
-    if (oldVoiceState.channelId == newVoiceState.channelId) {
-        // Only track moving channels updates
+    if (
+        oldVoiceState.channelId == newVoiceState.channelId &&
+        oldVoiceState.selfDeaf == newVoiceState.selfDeaf &&
+        oldVoiceState.serverDeaf == newVoiceState.serverDeaf
+        ) {
+        // Only track following updates:
+        // channel, deafen
         return;
     }
 
     let guild = oldVoiceState.guild,
         discordUser = (await guild.members.fetch(oldVoiceState.id)).user,
         user = new User(db, discordUser),
+        deafenStatus = handleDeafenStatus(oldVoiceState, newVoiceState),
         oldChannel, newChannel;
     
     if (oldVoiceState.channelId) {
@@ -124,25 +130,25 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         newChannel = await guild.channels.fetch(newVoiceState.channelId);
     }
 
-    if (!oldChannel) {
+    if (!oldChannel || deafenStatus == DeafenStatus.UNDEAFENING) {
         // Joined the call
         console.log(discordUser.username + " joined a call");
         user.joinVoice();
 
         handleJoinAlone(newChannel, user, guild.afkChannelId);
-    } else if (!newChannel) {
+    } else if (!newChannel || deafenStatus == DeafenStatus.DEAFENING) {
         // Left the call
         console.log(discordUser.username + " left a call");
         user.leaveVoice();
         user.leaveVoiceAlone();
 
-        handleLeaveAlone(oldChannel);
-    } else {
-        // Went from one call to another
+        handleLeaveAlone(oldChannel, user, deafenStatus);
+    } else if (!newVoiceState.selfDeaf && !newVoiceState.serverDeaf) {
+        // Went from one call to another while undeafened
         console.log(discordUser.username + " joined another call");
         
         handleJoinAlone(newChannel, user, guild.afkChannelId);
-        handleLeaveAlone(oldChannel);
+        handleLeaveAlone(oldChannel, user, deafenStatus);
     }
 });
 
@@ -151,7 +157,7 @@ nodeCleanup((exitCode, signal) => {
     refreshCCStats();
 });
 
-function handleJoinAlone(newChannel, user, afkChannelId) {
+function handleJoinAlone(newChannel, user, afkChannelId, deafenStatus) {
     // Stop tracking alone time for user
     user.leaveVoiceAlone();
     
@@ -181,7 +187,12 @@ function handleJoinAlone(newChannel, user, afkChannelId) {
     }
 }
 
-function handleLeaveAlone(oldChannel) {
+function handleLeaveAlone(oldChannel, user, deafenStatus) {
+    if (deafenStatus == DeafenStatus.DEAFENING) {
+        console.log(user.getUsername() + " is deafening");
+        return;
+    }
+
     if (oldChannel.members.size == 1) {
         // Start tracking alone time for other user
         let otherMember = oldChannel.members.first();
@@ -190,5 +201,23 @@ function handleLeaveAlone(oldChannel) {
 
         let otherUser = new User(db, otherDiscordUser);
         otherUser.joinVoiceAlone();
+    }
+}
+
+function handleDeafenStatus(oldVoiceState, newVoiceState) {
+    if (
+        !oldVoiceState.selfDeaf && newVoiceState.selfDeaf ||
+        !oldVoiceState.serverDeaf && newVoiceState.serverDeaf
+        ) {
+        // Going to deafen
+        return DeafenStatus.DEAFENING;
+    } else if (
+        oldVoiceState.selfDeaf && !newVoiceState.selfDeaf ||
+        oldVoiceState.serverDeaf && !newVoiceState.serverDeaf
+        ) {
+        // Going to undeafen
+        return DeafenStatus.UNDEAFENING;
+    } else {
+        return DeafenStatus.NO_DEAFEN;
     }
 }
