@@ -1,8 +1,8 @@
 const Discord = require("discord.js");
 const db = require('better-sqlite3')('./data/myData.db');
 const nodeCleanup = require("node-cleanup");
-const {User, UserList} = require("./user.js");
-const utils = require("./utils.js");
+const {User, UserList, refreshCCStats} = require("./user.js");
+const interactions = require("./interactions.js");
 require("dotenv").config();
 
 const DiscordEvents = Discord.Constants.Events;
@@ -52,7 +52,7 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
     });
 
     // Create the commands
-    let commands
+    let commands;
     
     let testGuild // = client.guilds.cache.get("846186286918270996");
     if (testGuild) {
@@ -79,38 +79,25 @@ client.on(DiscordEvents.INTERACTION_CREATE, async (interaction) => {
         return;
     }
 
+    let content;
+
     const { commandName, options } = interaction;
     switch (commandName) {
         case "ccme":
-            refreshCCStats();
+            await interaction.deferReply();
 
-            let user = new User(db, interaction.user);
-
-            interaction.reply({
-                content: user.toString(),
+            content = interactions.ccme(interaction);
+            await interaction.editReply({
+                content: content,
             });
 
             break;
         case "cctop":
-            refreshCCStats();
+            await interaction.deferReply();
 
-            let users = new UserList(db);
-            users.loadByTop5VoiceTimeMS();
-
-            let replyStr = "Top Total Voice Channel Time\n";
-            users.list.forEach((user, i) => {
-                replyStr += `${i + 1}. ${user.getUsername()}: ${user.getVoiceTimeStr()}\n`
-            });
-            
-            users.loadByTop5AloneTimeMS();
-
-            replyStr += "\nTop Voice Channel Losers\n";
-            users.list.forEach((user, i) => {
-                replyStr += `${i + 1}. ${user.getUsername()}: ${user.getAloneTimeStr()}\n`
-            });
-
-            interaction.reply({
-                content: replyStr,
+            content = interactions.cctop();
+            await interaction.editReply({
+                content: content,
             });
             break;
         default:
@@ -163,15 +150,6 @@ nodeCleanup((exitCode, signal) => {
     console.log("Refreshing stats before stopping");
     refreshCCStats();
 });
-
-function refreshCCStats() {
-    let users = new UserList(db);
-    users.loadByNonZeroJoinedTimes();
-
-    users.list.forEach(user => {
-        user.refreshStats();
-    });
-}
 
 function handleJoinAlone(newChannel, user, afkChannelId) {
     // Stop tracking alone time for user

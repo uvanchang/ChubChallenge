@@ -1,3 +1,4 @@
+const db = require('better-sqlite3')('./data/myData.db');
 const utils = require("./utils.js");
 
 class User {
@@ -251,4 +252,13 @@ class InternalUser {
     }
 }
 
-module.exports = {User, UserList};
+function refreshCCStats() {
+    let users = new UserList(db);
+    users.loadByNonZeroJoinedTimes();
+
+    users.list.forEach(user => {
+        user.refreshStats();
+    });
+}
+
+module.exports = {User, UserList, refreshCCStats};
