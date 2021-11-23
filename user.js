@@ -43,6 +43,7 @@ class User {
     }
 
     joinVoiceAlone() {
+        console.log("Tracking " + this.user.Username + " alone time");
         this.user.AloneJoinedTime = Date.now();
 
         this.user.InsertOrUpdate();

@@ -142,7 +142,7 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         console.log(discordUser.username + " joined a call");
         user.joinVoice();
 
-        handleJoinAlone(oldChannel, newChannel, user);
+        handleJoinAlone(newChannel, user);
     } else if (!newVoiceState.channelId) {
         // Left the call
         console.log(discordUser.username + " left a call");
@@ -152,9 +152,9 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         handleLeaveAlone(oldChannel);
     } else {
         // Went from one call to another
-        console.log(discordUser.username + " went joined another call");
+        console.log(discordUser.username + " joined another call");
         
-        handleJoinAlone(oldChannel, newChannel, user);
+        handleJoinAlone(newChannel, user);
         handleLeaveAlone(oldChannel);
     }
 });
@@ -173,18 +173,14 @@ function refreshCCStats() {
     });
 }
 
-function handleJoinAlone(oldChannel, newChannel, user) {
-    if ((!oldChannel || oldChannel.members.size != 0) && newChannel.members.size == 1) {
+function handleJoinAlone(newChannel, user) {
+    // Stop tracking alone time for user
+    user.leaveVoiceAlone();
+
+    if (newChannel.members.size == 1) {
         // Start tracking alone time if going between channels and new channel is 1
-        console.log("Tracking " + user.getUsername() + " alone time");
         user.joinVoiceAlone();
     } else if (newChannel.members.size == 2) {
-        if (oldChannel) {
-            // Stop tracking alone time for user
-            console.log("Stopping " + user.getUsername() + " alone time");
-            user.leaveVoiceAlone();
-        }
-
         // Stop tracking alone time for other user
         let otherMember = newChannel.members.find(member => {
             return member.user.id !== user.getUserID();
@@ -194,7 +190,6 @@ function handleJoinAlone(oldChannel, newChannel, user) {
         }
 
         let otherDiscordUser = otherMember.user;
-        console.log("Stopping " + otherDiscordUser.username + " alone time");
 
         let otherUser = new User(db, otherDiscordUser);
         otherUser.leaveVoiceAlone();
@@ -207,7 +202,6 @@ function handleLeaveAlone(oldChannel) {
         let otherMember = oldChannel.members.first();
 
         let otherDiscordUser = otherMember.user;
-        console.log("Tracking " + otherDiscordUser.username + " alone time");
 
         let otherUser = new User(db, otherDiscordUser);
         otherUser.joinVoiceAlone();
