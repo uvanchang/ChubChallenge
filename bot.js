@@ -33,7 +33,7 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
 
         channels.forEach(async channel => {
             // Only want voice channels that have users
-            if (channel.type !== "GUILD_VOICE" || channel.members.size == 0) {
+            if (channel.type !== "GUILD_VOICE" || channel.members.size == 0 || channel.id == guild.afkChannelId) {
                 return;
             }
 
