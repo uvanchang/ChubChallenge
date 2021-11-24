@@ -162,7 +162,13 @@ nodeCleanup((exitCode, signal) => {
     refreshCCStats();
 });
 
-function handleJoinAlone(newChannel, user, afkChannelId, deafenStatus) {
+/**
+ * @param {Discord.GuildChannel} newChannel 
+ * @param {User} user 
+ * @param {string} afkChannelId 
+ * @returns 
+ */
+function handleJoinAlone(newChannel, user, afkChannelId) {
     // Stop tracking alone time for user
     user.leaveVoiceAlone();
     
@@ -181,7 +187,8 @@ function handleJoinAlone(newChannel, user, afkChannelId, deafenStatus) {
         let otherMember = newChannel.members.find(member => {
             return member.user.id !== user.getUserID();
         });
-        if (!otherMember) {
+        if (!otherMember || otherMember.voice.deaf) {
+            // No other member or the other member is deafened
             return;
         }
 
@@ -190,6 +197,12 @@ function handleJoinAlone(newChannel, user, afkChannelId, deafenStatus) {
     }
 }
 
+/**
+ * @param {Discord.GuildChannel} oldChannel 
+ * @param {User} user 
+ * @param {*} deafenStatus 
+ * @returns 
+ */
 function handleLeaveAlone(oldChannel, user, deafenStatus) {
     if (deafenStatus == DeafenStatus.DEAFENING) {
         console.log(user.getUsername() + " is deafening");
@@ -205,6 +218,11 @@ function handleLeaveAlone(oldChannel, user, deafenStatus) {
     }
 }
 
+/**
+ * @param {Discord.VoiceState} oldVoiceState 
+ * @param {Discord.VoiceState} newVoiceState 
+ * @returns 
+ */
 function handleDeafenStatus(oldVoiceState, newVoiceState) {
     if (
         !oldVoiceState.selfDeaf && newVoiceState.selfDeaf ||

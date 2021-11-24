@@ -14,8 +14,8 @@ class User {
             this.user.loadByUserID(discordMember.user.id);
             this.user.Username = discordMember.user.username;
             
-            this.deaf = discordMember.voice.deaf;
-            this.streaming = discordMember.voice.streaming;
+            this.deaf = discordMember.voice && discordMember.voice.deaf;
+            this.streaming = discordMember.voice && discordMember.voice.streaming;
         }
     }
 

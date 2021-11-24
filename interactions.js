@@ -1,3 +1,4 @@
+const Discord = require("discord.js");
 const db = require('better-sqlite3')('./data/myData.db');
 const {User, UserList, refreshCCStats} = require("./user.js");
 
@@ -5,7 +6,9 @@ function ccme(interaction) {
     console.log("ccme");
     refreshCCStats();
 
-    let user = new User(db, interaction.user);
+    let member = new Discord.GuildMember();
+    member.user = interaction.user;
+    let user = new User(db, member);
     return user.toString()
 }
 
