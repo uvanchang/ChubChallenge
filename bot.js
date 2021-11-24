@@ -38,7 +38,12 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
             }
 
             channel.members.forEach(member => {
-                console.log(member.user.username + " in a call")
+                if (member.voice.deaf) {
+                    console.log(member.user.username + " is deaf");
+                    return;
+                }
+
+                console.log(member.user.username + " in a call");
 
                 let user = new User(db, member.user);
                 user.joinVoice();
@@ -130,7 +135,7 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         newChannel = await guild.channels.fetch(newVoiceState.channelId);
     }
 
-    if (!oldChannel || deafenStatus == DeafenStatus.UNDEAFENING) {
+    if ((!oldChannel || deafenStatus == DeafenStatus.UNDEAFENING) && !newVoiceState.deaf) {
         // Joined the call
         console.log(discordUser.username + " joined a call");
         user.joinVoice();
@@ -143,7 +148,7 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
         user.leaveVoiceAlone();
 
         handleLeaveAlone(oldChannel, user, deafenStatus);
-    } else if (!newVoiceState.selfDeaf && !newVoiceState.serverDeaf) {
+    } else if (!newVoiceState.deaf) {
         // Went from one call to another while undeafened
         console.log(discordUser.username + " joined another call");
         
