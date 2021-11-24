@@ -45,7 +45,7 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
 
                 console.log(member.user.username + " in a call");
 
-                let user = new User(db, member.user);
+                let user = new User(db, member);
                 user.joinVoice();
 
                 if (channel.members.size == 1) {
@@ -122,8 +122,8 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
     }
 
     let guild = oldVoiceState.guild,
-        discordUser = (await guild.members.fetch(oldVoiceState.id)).user,
-        user = new User(db, discordUser),
+        discordMember = await guild.members.fetch(oldVoiceState.id),
+        user = new User(db, discordMember),
         deafenStatus = handleDeafenStatus(oldVoiceState, newVoiceState),
         oldChannel, newChannel;
     
@@ -137,20 +137,20 @@ client.on(DiscordEvents.VOICE_STATE_UPDATE, async (oldVoiceState, newVoiceState)
 
     if ((!oldChannel || deafenStatus == DeafenStatus.UNDEAFENING) && !newVoiceState.deaf) {
         // Joined the call
-        console.log(discordUser.username + " joined a call");
+        console.log(user.getUsername() + " joined a call");
         user.joinVoice();
 
         handleJoinAlone(newChannel, user, guild.afkChannelId);
     } else if (!newChannel || deafenStatus == DeafenStatus.DEAFENING) {
         // Left the call
-        console.log(discordUser.username + " left a call");
+        console.log(user.getUsername() + " left a call");
         user.leaveVoice();
         user.leaveVoiceAlone();
 
         handleLeaveAlone(oldChannel, user, deafenStatus);
     } else if (!newVoiceState.deaf) {
         // Went from one call to another while undeafened
-        console.log(discordUser.username + " joined another call");
+        console.log(user.getUsername() + " joined another call");
         
         handleJoinAlone(newChannel, user, guild.afkChannelId);
         handleLeaveAlone(oldChannel, user, deafenStatus);
@@ -185,9 +185,7 @@ function handleJoinAlone(newChannel, user, afkChannelId, deafenStatus) {
             return;
         }
 
-        let otherDiscordUser = otherMember.user;
-
-        let otherUser = new User(db, otherDiscordUser);
+        let otherUser = new User(db, otherMember);
         otherUser.leaveVoiceAlone();
     }
 }
@@ -202,9 +200,7 @@ function handleLeaveAlone(oldChannel, user, deafenStatus) {
         // Start tracking alone time for other user
         let otherMember = oldChannel.members.first();
 
-        let otherDiscordUser = otherMember.user;
-
-        let otherUser = new User(db, otherDiscordUser);
+        let otherUser = new User(db, otherMember);
         otherUser.joinVoiceAlone();
     }
 }

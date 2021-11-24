@@ -1,14 +1,21 @@
+const Discord = require("discord.js");
 const db = require('better-sqlite3')('./data/myData.db');
 const utils = require("./utils.js");
 
 class User {
-    constructor(db, discordUser) {
+    /**
+     * @param {BetterSqlite3.Database} db 
+     * @param {Discord.GuildMember} discordMember 
+     */
+    constructor(db, discordMember) {
         this.user = new InternalUser(db);
 
-        if (discordUser) {
-            this.user.loadByUserID(discordUser.id);
+        if (discordMember) {
+            this.user.loadByUserID(discordMember.user.id);
+            this.user.Username = discordMember.user.username;
             
-            this.user.Username = discordUser.username;
+            this.deaf = discordMember.voice.deaf;
+            this.streaming = discordMember.voice.streaming;
         }
     }
 
