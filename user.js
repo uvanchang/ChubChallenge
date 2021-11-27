@@ -5,17 +5,20 @@ const utils = require("./utils.js");
 class User {
     /**
      * @param {BetterSqlite3.Database} db 
-     * @param {Discord.GuildMember} discordMember 
+     * @param {Discord.GuildMember | Discord.User} discordMember 
      */
     constructor(db, discordMember) {
         this.user = new InternalUser(db);
 
-        if (discordMember) {
+        if (Discord.GuildMember.prototype.isPrototypeOf(discordMember)) {
             this.user.loadByUserID(discordMember.user.id);
             this.user.Username = discordMember.user.username;
             
             this.deaf = discordMember.voice && discordMember.voice.deaf;
             this.streaming = discordMember.voice && discordMember.voice.streaming;
+        } else if (Discord.User.prototype.isPrototypeOf(discordMember)) {
+            this.user.loadByUserID(discordMember.id);
+            this.user.Username = discordMember.username;
         }
     }
 

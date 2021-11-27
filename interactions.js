@@ -6,9 +6,7 @@ function ccme(interaction) {
     console.log("ccme");
     refreshCCStats();
 
-    let member = new Discord.GuildMember();
-    member.user = interaction.user;
-    let user = new User(db, member);
+    let user = new User(db, interaction.user);
     return user.toString()
 }
 
