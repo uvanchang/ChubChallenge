@@ -11,6 +11,7 @@ class StateUpdate {
     static DEAFENING = 3;
     static UNDEAFENING = 4;
     static GOING_AFK = 5;
+    static GOING_UNAFK = 6;
 
     /**
      * @param {Discord.VoiceState} oldState 
@@ -56,6 +57,8 @@ class StateUpdate {
             this.type = StateUpdate.LEAVING_CALL;
         } else if (this.newChannel.id === this.guild.afkChannelId) {
             this.type = StateUpdate.GOING_AFK;
+        } else if (this.oldChannel.id === this.guild.afkChannelId) {
+            this.type = StateUpdate.GOING_UNAFK;
         } else {
             this.type = StateUpdate.TRANSFERING_CALL;
         }
@@ -64,6 +67,8 @@ class StateUpdate {
     handle() {
         switch (this.type) {
             case StateUpdate.JOINING_CALL:
+            case StateUpdate.UNDEAFENING:
+            case StateUpdate.GOING_UNAFK:
                 console.log(this.user.getUsername() + " joined a call");
                 this.user.joinVoice();
 
@@ -72,6 +77,7 @@ class StateUpdate {
                 break;
 
             case StateUpdate.LEAVING_CALL:
+            case StateUpdate.GOING_AFK:
                 console.log(this.user.getUsername() + " leaving a call");
                 this.user.leaveVoice();
                 this.user.leaveVoiceAlone();
@@ -95,21 +101,6 @@ class StateUpdate {
 
                 break;
 
-            case StateUpdate.UNDEAFENING:
-                console.log(this.user.getUsername() + " undeafening");
-                this.user.joinVoice();
-
-                this.handleJoinAlone();
-
-                break;
-
-            case StateUpdate.GOING_AFK:
-                console.log(this.user.getUsername() + " going AFK");
-                this.user.leaveVoice();
-                this.user.leaveVoiceAlone();
-
-                break;
-
             default:
                 console.log(this.user.getUsername() + " doing unknown action " + this.type);
                 break;
@@ -120,18 +111,15 @@ class StateUpdate {
         // Stop tracking alone time for user
         this.user.leaveVoiceAlone();
 
-        if (this.newChannel.members.size == 1) {
+        let newMembers = this.getValidMembers(this.newChannel.members);
+        if (newMembers.length == 1) {
             // Start tracking alone time if going between channels and new channel is 1
             this.user.joinVoiceAlone();
-        } else if (this.newChannel.members.size == 2) {
+        } else if (newMembers.length == 2) {
             // Stop tracking alone time for other user
-            let otherMember = this.newChannel.members.find(member => {
+            let otherMember = newMembers.find(member => {
                 return member.user.id !== this.user.getUserID();
             });
-            if (!otherMember || otherMember.voice.deaf) {
-                // No other member or the other member is deafened
-                return;
-            }
 
             let otherUser = new User(db, otherMember);
             otherUser.leaveVoiceAlone();
@@ -139,13 +127,28 @@ class StateUpdate {
     }
 
     handleLeaveAlone() {
-        if (this.oldChannel.members.size == 1) {
+        let oldMembers = this.getValidMembers(this.oldChannel.members);
+        if (oldMembers.length == 1) {
             // Start tracking alone time for other user
-            let otherMember = this.oldChannel.members.first();
-
+            let otherMember = oldMembers[0];
             let otherUser = new User(db, otherMember);
             otherUser.joinVoiceAlone();
         }
+    }
+
+    /**
+     * 
+     * @param {Discord.Collection<string, Discord.GuildMember} members 
+     * @returns {[]Discord.GuildMember}
+     */
+    getValidMembers(members) {
+        let newMembers = members.reduce((newMembers, member) => {
+            if (!member.voice.deaf) {
+                newMembers.push(member);
+            }
+            return newMembers;
+        }, []);
+        return newMembers;
     }
 }
 
