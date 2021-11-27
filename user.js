@@ -112,11 +112,11 @@ class User {
     }
     
     getVoiceTimeStr() {
-        return utils.getFormatedTime(this.user.VoiceTimeMS);
+        return utils.getFormattedTime(this.user.VoiceTimeMS);
     }
 
     getAloneTimeStr() {
-        return utils.getFormatedTime(this.user.AloneTimeMS);
+        return utils.getFormattedTime(this.user.AloneTimeMS);
     }
 
     toString() {
