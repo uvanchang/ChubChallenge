@@ -69,6 +69,11 @@ class StateUpdate {
             case StateUpdate.JOINING_CALL:
             case StateUpdate.UNDEAFENING:
             case StateUpdate.GOING_UNAFK:
+                if (this.user.deaf) {
+                    // Doesn't count if they're deafened
+                    return;
+                }
+
                 console.log(this.user.getUsername() + " joined a call");
                 this.user.joinVoice();
 
