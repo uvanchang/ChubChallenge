@@ -20,6 +20,9 @@ class User {
             this.user.loadByUserID(discordMember.id);
             this.user.Username = discordMember.username;
         }
+
+        // Insert just in case the user doesn't exist yet
+        this.user.InsertOrUpdate();
     }
 
     getUsername() {
