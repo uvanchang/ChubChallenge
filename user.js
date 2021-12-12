@@ -38,7 +38,7 @@ class User {
 
     leaveVoice() {
         if (!this.user.IsLoaded) {
-            console.log(this.user.username + " not loaded! Not adding voice time");
+            console.log(this.user.Username + " not loaded! Not adding voice time");
         } else if (this.user.JoinedTime == 0) {
             // No time to add
             return;
@@ -62,7 +62,7 @@ class User {
 
     leaveVoiceAlone() {
         if (!this.user.IsLoaded) {
-            console.log(this.user.username + " not loaded! Not adding voice time");
+            console.log(this.user.Username + " not loaded! Not adding voice time");
         } else if (this.user.AloneJoinedTime == 0) {
             // No time to add
             return;
@@ -79,7 +79,7 @@ class User {
 
     refreshStats() {
         if (!this.user.IsLoaded) {
-            console.log(this.user.username + " not loaded! Not refreshing stats")
+            console.log(this.user.Username + " not loaded! Not refreshing stats")
             return;
         }
 

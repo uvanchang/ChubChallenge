@@ -142,9 +142,8 @@ class StateUpdate {
     }
 
     /**
-     * 
      * @param {Discord.Collection<string, Discord.GuildMember} members 
-     * @returns {[]Discord.GuildMember}
+     * @returns {Discord.GuildMember[]}
      */
     getValidMembers(members) {
         let newMembers = members.reduce((newMembers, member) => {
