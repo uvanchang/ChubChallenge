@@ -16,13 +16,16 @@ class User {
             
             this.deaf = discordMember.voice && discordMember.voice.deaf;
             this.streaming = discordMember.voice && discordMember.voice.streaming;
+            
+            // Insert just in case the user doesn't exist yet
+            this.user.InsertOrUpdate();
         } else if (Discord.User.prototype.isPrototypeOf(discordMember)) {
             this.user.loadByUserID(discordMember.id);
             this.user.Username = discordMember.username;
+            
+            // Insert just in case the user doesn't exist yet
+            this.user.InsertOrUpdate();
         }
-
-        // Insert just in case the user doesn't exist yet
-        this.user.InsertOrUpdate();
     }
 
     getUsername() {
