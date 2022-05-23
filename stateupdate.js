@@ -68,9 +68,11 @@ class StateUpdate {
         switch (this.type) {
             case StateUpdate.JOINING_CALL:
             case StateUpdate.UNDEAFENING:
+                this.user.stopDeaf();
+                
             case StateUpdate.GOING_UNAFK:
                 if (this.user.deaf) {
-                    // Doesn't count if they're deafened
+                    this.user.startDeaf();
                     return;
                 }
 
@@ -86,6 +88,8 @@ class StateUpdate {
                 console.log(this.user.getUsername() + " leaving a call");
                 this.user.leaveVoice();
                 this.user.leaveVoiceAlone();
+
+                this.user.stopDeaf();
 
                 this.handleLeaveAlone();
 
@@ -103,6 +107,8 @@ class StateUpdate {
                 console.log(this.user.getUsername() + " deafening");
                 this.user.leaveVoice();
                 this.user.leaveVoiceAlone();
+
+                this.user.startDeaf();
 
                 break;
 

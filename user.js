@@ -83,18 +83,44 @@ class User {
         this.user.InsertOrUpdate();
     }
 
+    startDeaf() {
+        console.log("Tracking " + this.user.Username + " deaf time");
+        this.user.DeafStartTime = Date.now();
+
+        this.user.InsertOrUpdate();
+    }
+
+    stopDeaf() {
+        if (!this.user.IsLoaded) {
+            console.log(this.user.Username + " not loaded! Not adding deaf time");
+        } else if (this.user.DeafStartTime == 0) {
+            // No time to add
+            return;
+        } else {
+            let elapsedTime = Date.now() - this.user.DeafStartTime
+            this.user.DeafTimeMS += elapsedTime;
+            console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " DeafTimeMS for total of " + this.user.DeafTimeMS + " ms");
+        }
+
+        this.user.DeafStartTime = 0;
+
+        this.user.InsertOrUpdate();
+    }
+
     refreshStats() {
         if (!this.user.IsLoaded) {
             console.log(this.user.Username + " not loaded! Not refreshing stats")
             return;
         }
 
+        let updated = false;
+
         if (this.user.JoinedTime != 0) {
             let elapsedTime = Date.now() - this.user.JoinedTime;
             this.user.VoiceTimeMS += elapsedTime;
             this.user.JoinedTime = Date.now();
-            
-            this.user.InsertOrUpdate();
+
+            updated = true;
         }
 
         if (this.user.AloneJoinedTime != 0) {
@@ -102,6 +128,18 @@ class User {
             this.user.AloneTimeMS += elapsedTime;
             this.user.AloneJoinedTime = Date.now();
             
+            updated = true;
+        }
+
+        if (this.user.DeafStartTime != 0) {
+            let elapsedTime = Date.now() - this.user.DeafStartTime;
+            this.user.DeafStartTime += elapsedTime;
+            this.user.DeafStartTime = Date.now();
+            
+            updated = true;
+        }
+
+        if (updated) {
             this.user.InsertOrUpdate();
         }
     }
@@ -113,6 +151,7 @@ class User {
 
         this.user.JoinedTime = 0;
         this.user.AloneJoinedTime = 0;
+        this.user.DeafStartTime = 0;
 
         this.user.InsertOrUpdate();
     }
@@ -125,8 +164,12 @@ class User {
         return utils.getFormattedTime(this.user.AloneTimeMS);
     }
 
+    getDeafTimeStr() {
+        return utils.getFormattedTime(this.user.DeafTimeMS);
+    }
+
     toString() {
-        return `**${this.user.Username}**\nTotal Time: ${this.getVoiceTimeStr()}\nAlone Time: ${this.getAloneTimeStr()}`
+        return `**${this.user.Username}**\nTotal Time: ${this.getVoiceTimeStr()}\nAlone Time: ${this.getAloneTimeStr()}\nDeaf Time: ${this.getDeafTimeStr()}`
     }
 }
 
@@ -134,6 +177,7 @@ class UserList {
     constructor(db) {
         this.db = db;
 
+        /** @type {User[]} */
         this.list = [];
     }
 
@@ -149,6 +193,10 @@ class UserList {
         this.loadByCriteria("ORDER BY AloneTimeMS DESC LIMIT 5");
     }
 
+    loadByTop5DeafTimeMS() {
+        this.loadByCriteria("ORDER BY DeafTimeMS DESC LIMIT 5");
+    }
+
     loadByCriteria(criteria) {
         this.list = [];
         const rows = this.db.prepare(`
@@ -158,7 +206,9 @@ class UserList {
                 VoiceTimeMS,
                 JoinedTime,
                 AloneTimeMS,
-                AloneJoinedTime
+                AloneJoinedTime,
+                DeafTimeMS,
+                DeafStartTime
             FROM
                 User
             ${criteria}
@@ -177,6 +227,9 @@ class UserList {
             internalUser.JoinedTime = row.JoinedTime;
             internalUser.AloneTimeMS = row.AloneTimeMS;
             internalUser.AloneJoinedTime = row.AloneJoinedTime;
+            internalUser.DeafTimeMS = row.DeafTimeMS;
+            internalUser.DeafStartTime = row.DeafStartTime;
+
             internalUser.IsLoaded = true;
 
             user.user = internalUser;
@@ -196,6 +249,8 @@ class InternalUser {
         this.JoinedTime = 0;
         this.AloneTimeMS = 0;
         this.AloneJoinedTime = 0;
+        this.DeafTimeMS = 0;
+        this.DeafStartTime = 0;
 
         this.IsLoaded = false;
     }
@@ -209,7 +264,9 @@ class InternalUser {
                 VoiceTimeMS,
                 JoinedTime,
                 AloneTimeMS,
-                AloneJoinedTime
+                AloneJoinedTime,
+                DeafTimeMS,
+                DeafStartTime
             FROM
                 User
             WHERE
@@ -225,6 +282,8 @@ class InternalUser {
         this.JoinedTime = row.JoinedTime;
         this.AloneTimeMS = row.AloneTimeMS;
         this.AloneJoinedTime = row.AloneJoinedTime;
+        this.DeafTimeMS = row.DeafTimeMS;
+        this.DeafStartTime = row.DeafStartTime;
 
         this.IsLoaded = true;
     }
@@ -239,7 +298,9 @@ class InternalUser {
                     VoiceTimeMS = ?, 
                     JoinedTime = ?,
                     AloneTimeMS = ?,
-                    AloneJoinedTime = ?
+                    AloneJoinedTime = ?,
+                    DeafTimeMS = ?,
+                    DeafStartTime = ?
                 WHERE UserID = ?
             `).run(
                 this.UserID,
@@ -248,21 +309,34 @@ class InternalUser {
                 this.JoinedTime,
                 this.AloneTimeMS,
                 this.AloneJoinedTime,
+                this.DeafTimeMS,
+                this.DeafStartTime,
                 this.UserID
             );
         } else {
             // Insert
             this.db.prepare(`
-                INSERT INTO User (UserID, Username, VoiceTimeMS, JoinedTime, AloneTimeMS, AloneJoinedTime)
+                INSERT INTO User (
+                    UserID,
+                    Username,
+                    VoiceTimeMS,
+                    JoinedTime,
+                    AloneTimeMS,
+                    AloneJoinedTime,
+                    DeafTimeMS,
+                    DeafStartTime
+                )
                 VALUES
-                    (?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 this.UserID,
                 this.Username,
                 this.VoiceTimeMS,
                 this.JoinedTime,
                 this.AloneTimeMS,
-                this.AloneJoinedTime
+                this.AloneJoinedTime,
+                this.DeafTimeMS,
+                this.DeafStartTime
             );
         }
     }

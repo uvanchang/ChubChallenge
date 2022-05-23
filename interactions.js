@@ -28,6 +28,13 @@ function cctop() {
     users.list.forEach((user, i) => {
         replyStr += `${i + 1}. ${user.getUsername()}: ${user.getAloneTimeStr()}\n`
     });
+    
+    users.loadByTop5DeafTimeMS();
+
+    replyStr += "\nTop \"why are you even in here?\"\n";
+    users.list.forEach((user, i) => {
+        replyStr += `${i + 1}. ${user.getUsername()}: ${user.getDeafTimeStr()}\n`
+    });
 
     return replyStr;
 }
