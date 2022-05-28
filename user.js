@@ -338,6 +338,8 @@ class InternalUser {
                 this.DeafTimeMS,
                 this.DeafStartTime
             );
+
+            this.IsLoaded = true;
         }
     }
 }

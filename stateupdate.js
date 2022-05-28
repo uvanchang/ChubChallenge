@@ -39,7 +39,7 @@ class StateUpdate {
         this.user = new User(db, discordMember);
 
         if (this.oldState.channelId) {
-            this.oldChannel = await this.guild.channels.fetch(this.oldState.channelId)
+            this.oldChannel = await this.guild.channels.fetch(this.oldState.channelId);
         }
     
         if (this.newState.channelId) {
