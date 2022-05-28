@@ -38,14 +38,21 @@ client.once(DiscordEvents.CLIENT_READY, async () => {
             }
 
             channel.members.forEach(member => {
+                let user = new User(db, member);
+
+                if (member.voice.streaming) {
+                    console.log(user.getUsername() + " is streaming");
+                    user.startStream();
+                }
+
                 if (member.voice.deaf) {
-                    console.log(member.user.username + " is deaf");
+                    console.log(user.getUsername() + " is deaf");
+                    user.startDeaf();
                     return;
                 }
 
-                console.log(member.user.username + " in a call");
+                console.log(user.getUsername() + " in a call");
 
-                let user = new User(db, member);
                 user.joinVoice();
 
                 if (channel.members.size == 1) {

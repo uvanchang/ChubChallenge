@@ -49,7 +49,7 @@ class User {
             // No time to add
             return;
         } else {
-            let elapsedTime = Date.now() - this.user.JoinedTime
+            let elapsedTime = Date.now() - this.user.JoinedTime;
             this.user.VoiceTimeMS += elapsedTime;
             console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " VoiceTimeMS for total of " + this.user.VoiceTimeMS + " ms");
         }
@@ -73,7 +73,7 @@ class User {
             // No time to add
             return;
         } else {
-            let elapsedTime = Date.now() - this.user.AloneJoinedTime
+            let elapsedTime = Date.now() - this.user.AloneJoinedTime;
             this.user.AloneTimeMS += elapsedTime;
             console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " AloneTimeMS for total of " + this.user.AloneTimeMS + " ms");
         }
@@ -97,12 +97,36 @@ class User {
             // No time to add
             return;
         } else {
-            let elapsedTime = Date.now() - this.user.DeafStartTime
+            let elapsedTime = Date.now() - this.user.DeafStartTime;
             this.user.DeafTimeMS += elapsedTime;
             console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " DeafTimeMS for total of " + this.user.DeafTimeMS + " ms");
         }
 
         this.user.DeafStartTime = 0;
+
+        this.user.InsertOrUpdate();
+    }
+
+    startStream() {
+        console.log("Tracking " + this.user.Username + " stream time");
+        this.user.StreamingStartTime = Date.now();
+
+        this.user.InsertOrUpdate();
+    }
+
+    endStream() {
+        if (!this.user.IsLoaded) {
+            console.log(this.user.Username + " not loaded! Not adding stream time");
+        } else if (this.user.StreamingStartTime == 0) {
+            // No time to add
+            return;
+        } else {
+            let elapsedTime = Date.now() - this.user.StreamingStartTime;
+            this.user.StreamingTimeMS += elapsedTime;
+            console.log("Adding " + elapsedTime + " ms to " + this.user.Username + " StreamingTimeMS for total of " + this.user.StreamingTimeMS + " ms");
+        }
+
+        this.user.StreamingStartTime = 0;
 
         this.user.InsertOrUpdate();
     }
@@ -133,8 +157,16 @@ class User {
 
         if (this.user.DeafStartTime != 0) {
             let elapsedTime = Date.now() - this.user.DeafStartTime;
-            this.user.DeafStartTime += elapsedTime;
+            this.user.DeafTimeMS += elapsedTime;
             this.user.DeafStartTime = Date.now();
+            
+            updated = true;
+        }
+
+        if (this.user.StreamingStartTime != 0) {
+            let elapsedTime = Date.now() - this.user.StreamingStartTime;
+            this.user.StreamingTimeMS += elapsedTime;
+            this.user.StreamingStartTime = Date.now();
             
             updated = true;
         }
@@ -152,6 +184,7 @@ class User {
         this.user.JoinedTime = 0;
         this.user.AloneJoinedTime = 0;
         this.user.DeafStartTime = 0;
+        this.user.StreamingStartTime = 0;
 
         this.user.InsertOrUpdate();
     }
@@ -168,8 +201,18 @@ class User {
         return utils.getFormattedTime(this.user.DeafTimeMS);
     }
 
+    getStreamingTimeStr() {
+        return utils.getFormattedTime(this.user.StreamingTimeMS);
+    }
+
     toString() {
-        return `**${this.user.Username}**\nTotal Time: ${this.getVoiceTimeStr()}\nAlone Time: ${this.getAloneTimeStr()}\nDeaf Time: ${this.getDeafTimeStr()}`
+        return`
+**${this.user.Username}**
+Total Time: ${this.getVoiceTimeStr()}
+Alone Time: ${this.getAloneTimeStr()}
+Deaf Time: ${this.getDeafTimeStr()}
+Streaming Time: ${this.getStreamingTimeStr()}
+`
     }
 }
 
@@ -197,6 +240,10 @@ class UserList {
         this.loadByCriteria("ORDER BY DeafTimeMS DESC LIMIT 5");
     }
 
+    loadByTop5StreamingTimeMS() {
+        this.loadByCriteria("ORDER BY StreamingTimeMS DESC LIMIT 5");
+    }
+
     loadByCriteria(criteria) {
         this.list = [];
         const rows = this.db.prepare(`
@@ -208,7 +255,9 @@ class UserList {
                 AloneTimeMS,
                 AloneJoinedTime,
                 DeafTimeMS,
-                DeafStartTime
+                DeafStartTime,
+                StreamingTimeMS,
+                StreamingStartTime
             FROM
                 User
             ${criteria}
@@ -229,6 +278,8 @@ class UserList {
             internalUser.AloneJoinedTime = row.AloneJoinedTime;
             internalUser.DeafTimeMS = row.DeafTimeMS;
             internalUser.DeafStartTime = row.DeafStartTime;
+            internalUser.StreamingTimeMS = row.StreamingTimeMS;
+            internalUser.StreamingStartTime = row.StreamingStartTime;
 
             internalUser.IsLoaded = true;
 
@@ -251,6 +302,8 @@ class InternalUser {
         this.AloneJoinedTime = 0;
         this.DeafTimeMS = 0;
         this.DeafStartTime = 0;
+        this.StreamingTimeMS = 0;
+        this.StreamingStartTime = 0;
 
         this.IsLoaded = false;
     }
@@ -266,7 +319,9 @@ class InternalUser {
                 AloneTimeMS,
                 AloneJoinedTime,
                 DeafTimeMS,
-                DeafStartTime
+                DeafStartTime,
+                StreamingTimeMS,
+                StreamingStartTime
             FROM
                 User
             WHERE
@@ -284,6 +339,8 @@ class InternalUser {
         this.AloneJoinedTime = row.AloneJoinedTime;
         this.DeafTimeMS = row.DeafTimeMS;
         this.DeafStartTime = row.DeafStartTime;
+        this.StreamingTimeMS = row.StreamingTimeMS;
+        this.StreamingStartTime = row.StreamingStartTime;
 
         this.IsLoaded = true;
     }
@@ -300,7 +357,9 @@ class InternalUser {
                     AloneTimeMS = ?,
                     AloneJoinedTime = ?,
                     DeafTimeMS = ?,
-                    DeafStartTime = ?
+                    DeafStartTime = ?,
+                    StreamingTimeMS = ?,
+                    StreamingStartTime = ?
                 WHERE UserID = ?
             `).run(
                 this.UserID,
@@ -311,6 +370,8 @@ class InternalUser {
                 this.AloneJoinedTime,
                 this.DeafTimeMS,
                 this.DeafStartTime,
+                this.StreamingTimeMS,
+                this.StreamingStartTime,
                 this.UserID
             );
         } else {
@@ -324,10 +385,12 @@ class InternalUser {
                     AloneTimeMS,
                     AloneJoinedTime,
                     DeafTimeMS,
-                    DeafStartTime
+                    DeafStartTime,
+                    StreamingTimeMS,
+                    StreamingStartTime
                 )
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 this.UserID,
                 this.Username,
@@ -336,7 +399,9 @@ class InternalUser {
                 this.AloneTimeMS,
                 this.AloneJoinedTime,
                 this.DeafTimeMS,
-                this.DeafStartTime
+                this.DeafStartTime,
+                this.StreamingTimeMS,
+                this.StreamingStartTime
             );
 
             this.IsLoaded = true;

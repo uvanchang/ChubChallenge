@@ -12,6 +12,8 @@ class StateUpdate {
     static UNDEAFENING = 4;
     static GOING_AFK = 5;
     static GOING_UNAFK = 6;
+    static START_STREAM = 7;
+    static END_STREAM = 8;
 
     /**
      * @param {Discord.VoiceState} oldState 
@@ -21,10 +23,11 @@ class StateUpdate {
         if (
             oldState.channelId == newState.channelId &&
             oldState.selfDeaf == newState.selfDeaf &&
-            oldState.serverDeaf == newState.serverDeaf
+            oldState.serverDeaf == newState.serverDeaf &&
+            oldState.streaming == newState.streaming
         ) {
             // Only track following updates:
-            // channel, deafen
+            // channel, deafen, streaming
             this.type = StateUpdate.UNTRACKED;
             return;
         }
@@ -47,7 +50,11 @@ class StateUpdate {
         }
 
         // Set type
-        if (!this.oldState.deaf && this.newState.deaf) {
+        if (!this.oldState.streaming && this.newState.streaming) {
+            this.type = StateUpdate.START_STREAM;
+        } else if (this.oldState.streaming && !this.newState.streaming) {
+            this.type = StateUpdate.END_STREAM;
+        } else if (!this.oldState.deaf && this.newState.deaf) {
             this.type = StateUpdate.DEAFENING;
         } else if (this.oldState.deaf && !this.newState.deaf) {
             this.type = StateUpdate.UNDEAFENING;
@@ -93,6 +100,9 @@ class StateUpdate {
 
                 this.handleLeaveAlone();
 
+            case StateUpdate.END_STREAM:
+                console.log(this.user.getUsername() + " ended stream");
+                this.user.endStream();
                 break;
 
             case StateUpdate.TRANSFERING_CALL:
@@ -110,6 +120,11 @@ class StateUpdate {
 
                 this.user.startDeaf();
 
+                break;
+            
+            case StateUpdate.START_STREAM:
+                console.log(this.user.getUsername() + " started stream");
+                this.user.startStream();
                 break;
 
             default:

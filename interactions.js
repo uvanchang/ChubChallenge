@@ -36,6 +36,13 @@ function cctop() {
         replyStr += `${i + 1}. ${user.getUsername()}: ${user.getDeafTimeStr()}\n`
     });
 
+    users.loadByTop5StreamingTimeMS();
+
+    replyStr += "\nTop Streamers\n";
+    users.list.forEach((user, i) => {
+        replyStr += `${i + 1}. ${user.getUsername()}: ${user.getStreamingTimeStr()}\n`
+    });
+
     return replyStr;
 }
 
