@@ -137,18 +137,20 @@ class StateUpdate {
         // Stop tracking alone time for user
         this.user.leaveVoiceAlone();
 
-        let newMembers = this.getValidMembers(this.newChannel.members);
-        if (newMembers.length == 1) {
-            // Start tracking alone time if going between channels and new channel is 1
-            this.user.joinVoiceAlone();
-        } else if (newMembers.length == 2) {
-            // Stop tracking alone time for other user
-            let otherMember = newMembers.find(member => {
-                return member.user.id !== this.user.getUserID();
-            });
-
-            let otherUser = new User(db, otherMember);
-            otherUser.leaveVoiceAlone();
+        if (!this.user.deaf) {
+            let newMembers = this.getValidMembers(this.newChannel.members);
+            if (newMembers.length == 1) {
+                // Start tracking alone time if going between channels and new channel is 1
+                this.user.joinVoiceAlone();
+            } else if (newMembers.length == 2) {
+                // Stop tracking alone time for other user
+                let otherMember = newMembers.find(member => {
+                    return member.user.id !== this.user.getUserID();
+                });
+    
+                let otherUser = new User(db, otherMember);
+                otherUser.leaveVoiceAlone();
+            }
         }
     }
 
