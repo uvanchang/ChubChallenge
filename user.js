@@ -37,6 +37,7 @@ class User {
     }
 
     joinVoice() {
+        this.leaveVoice();
         this.user.JoinedTime = Date.now();
 
         this.user.InsertOrUpdate();
@@ -60,6 +61,7 @@ class User {
     }
 
     joinVoiceAlone() {
+        this.leaveVoiceAlone();
         console.log("Tracking " + this.user.Username + " alone time");
         this.user.AloneJoinedTime = Date.now();
 
@@ -84,6 +86,7 @@ class User {
     }
 
     startDeaf() {
+        this.stopDeaf();
         console.log("Tracking " + this.user.Username + " deaf time");
         this.user.DeafStartTime = Date.now();
 
@@ -108,6 +111,7 @@ class User {
     }
 
     startStream() {
+        this.endStream();
         console.log("Tracking " + this.user.Username + " stream time");
         this.user.StreamingStartTime = Date.now();
 
@@ -133,7 +137,7 @@ class User {
 
     refreshStats() {
         if (!this.user.IsLoaded) {
-            console.log(this.user.Username + " not loaded! Not refreshing stats")
+            console.log(this.user.Username + " not loaded! Not refreshing stats");
             return;
         }
 
@@ -212,7 +216,7 @@ Total Time: ${this.getVoiceTimeStr()}
 Alone Time: ${this.getAloneTimeStr()}
 Deaf Time: ${this.getDeafTimeStr()}
 Streaming Time: ${this.getStreamingTimeStr()}
-`
+`;
     }
 }
 
